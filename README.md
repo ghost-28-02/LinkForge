@@ -1,7 +1,7 @@
 # LinkForge — Full-Stack URL Shortener & Analytics Platform
 
+![Next.js](https://img.shields.io/badge/Next.js-14.2-000000?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.19-000000?logo=express&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pg_8.12-4169E1?logo=postgresql&logoColor=white)
@@ -9,7 +9,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-LinkForge is a production-style, full-stack **URL shortening and analytics platform**. Each user gets a personal dashboard to create, manage, and track short links. The **Node/Express** API handles JWT authentication, Base62 short-code generation, custom aliases, and link expiry, while a **Redis read-through cache** keeps redirects fast and **PostgreSQL** serves as the source of truth. Every click is logged with referrer, browser, OS, and device for a rich analytics view, and any link can produce an on-demand QR code.
+LinkForge is a production-style, full-stack **URL shortening and analytics platform**. A **Next.js** frontend delivers a marketing landing page, secure authentication (signup with **OTP email verification** and **password reset via emailed token**), and a modern dashboard. The **Node/Express** API handles JWT authentication, Base62 short-code generation, custom aliases, and link expiry, while a **Redis read-through cache** keeps redirects fast and **PostgreSQL** serves as the source of truth. Every click is logged with referrer, browser, OS, and device for a rich analytics view, and any link can produce an on-demand QR code. Transactional email is delivered through **Brevo**.
 
 ---
 
@@ -24,6 +24,7 @@ LinkForge is a production-style, full-stack **URL shortening and analytics platf
   - [2. Install Dependencies](#2-install-dependencies)
   - [3. Configure Environment Variables](#3-configure-environment-variables)
   - [4. Run the Application](#4-run-the-application)
+- [Authentication & Email](#authentication--email)
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
 - [How Redirects Stay Fast](#how-redirects-stay-fast)
@@ -55,7 +56,10 @@ LinkForge is a production-style, full-stack **URL shortening and analytics platf
 
 ### Authentication & Security
 - Account **register / login** with JWT-based stateless auth
-- Passwords hashed with **bcrypt**
+- **Signup OTP verification** — a 6-digit code is emailed; accounts stay inactive until verified
+- **Password reset** via a single-use, hashed, expiring token emailed to the user
+- Transactional email through **Brevo** (with a console fallback for local dev)
+- Passwords hashed with **bcrypt**; OTPs and reset tokens stored as **SHA-256 hashes**
 - Protected routes guarded by auth middleware (links are scoped per user)
 - **Rate limiting** on auth (10 / 15 min) and shorten (30 / min) endpoints
 - Request validation with **Zod**
@@ -67,7 +71,7 @@ LinkForge is a production-style, full-stack **URL shortening and analytics platf
 
 ## Tech Stack
 
-### Frontend (`frontend/` — Next.js, current)
+### Frontend (`frontend/`)
 | Technology | Version | Purpose |
 |---|---|---|
 | Next.js | 14.2.5 | App Router framework & SSR |
@@ -76,21 +80,12 @@ LinkForge is a production-style, full-stack **URL shortening and analytics platf
 | PostCSS | 8.4.40 | CSS processing |
 | Autoprefixer | 10.4.19 | Vendor prefixing |
 
-The modern frontend lives in `frontend/` and includes a marketing landing page,
-login, signup with **6-digit OTP email verification**, **password reset via
-emailed token**, and a professional dashboard (stats, link management, QR
-codes, and per-link analytics). The original Vite client remains in `client/`
-as a reference.
+The frontend lives in `frontend/` and includes a marketing landing page, login,
+signup with **6-digit OTP email verification**, **password reset via emailed
+token**, and a professional dashboard (stats, link management, QR codes, and
+per-link analytics). Auth state is held client-side via a JWT-backed context.
 
-### Legacy Frontend (`client/` — Vite, reference)
-| Technology | Version | Purpose |
-|---|---|---|
-| React | 18.3.1 | UI framework |
-| React Router DOM | 6.26.0 | Client-side routing |
-| Vite | 5.4.0 | Build tool & dev server |
-| Tailwind CSS | 3.4.7 | Utility-first styling |
-
-### Backend
+### Backend (`backend/`)
 | Technology | Version | Purpose |
 |---|---|---|
 | Node.js | 18+ | JavaScript runtime (ESM) |
@@ -101,6 +96,7 @@ as a reference.
 | bcryptjs | 2.4.3 | Password hashing |
 | Zod | 3.23.8 | Request schema validation |
 | QRCode | 1.5.4 | QR code generation |
+| Brevo API | v3 | Transactional email (OTP & password reset) |
 | ua-parser-js | 1.0.38 | User-agent parsing for analytics |
 | express-rate-limit | 7.4.0 | Endpoint rate limiting |
 | CORS | 2.8.5 | Cross-origin resource sharing |
@@ -157,7 +153,7 @@ npm install
 cd ..
 
 # Frontend dependencies
-cd client
+cd frontend
 npm install
 cd ..
 ```
@@ -263,14 +259,14 @@ LinkForge/
 │       │   ├── db.js                 # PostgreSQL pool + query helper
 │       │   └── redis.js              # Redis client
 │       ├── db/                       # Database schema & migrations
-│       │   ├── schema.sql            # users / links / clicks tables + indexes
+│       │   ├── schema.sql            # users / links / clicks + verification & reset tables
 │       │   └── migrate.js            # Applies schema.sql
 │       ├── middleware/               # Express middleware
 │       │   ├── auth.js               # JWT verification (authenticate)
 │       │   ├── rateLimit.js          # auth & shorten rate limiters
 │       │   └── errorHandler.js       # notFound + central error handler
 │       ├── controllers/              # Request handlers (business logic)
-│       │   ├── authController.js     # register / login / me
+│       │   ├── authController.js     # register / verify-otp / login / reset / me
 │       │   ├── linkController.js     # create / list / delete / QR code
 │       │   ├── redirectController.js # public /:code redirect + click logging
 │       │   └── analyticsController.js# per-link analytics aggregation
@@ -279,32 +275,37 @@ LinkForge/
 │       │   └── links.js              # /api/links endpoints
 │       └── utils/                    # Shared helpers
 │           ├── base62.js             # Base62 encode / random code / alias validation
+│           ├── email.js              # Brevo transactional email (OTP & reset)
 │           └── userAgent.js          # Parse browser / OS / device from UA
-└── client/                           # React (Vite) + Tailwind dashboard
+└── frontend/                          # Next.js (App Router) + Tailwind UI
     ├── package.json                  # Frontend dependencies & scripts
-    ├── vite.config.js                # Vite configuration
+    ├── next.config.mjs               # Next.js configuration
     ├── tailwind.config.js            # Tailwind CSS configuration
-    ├── postcss.config.js             # PostCSS configuration
-    ├── index.html                    # Root HTML template
+    ├── postcss.config.mjs            # PostCSS configuration
+    ├── jsconfig.json                 # Path alias (@/*)
     ├── .env.example                  # Example frontend environment variables
-    └── src/
-        ├── main.jsx                  # React entry point (renders <App />)
-        ├── App.jsx                   # Routes & layout
-        ├── index.css                 # Tailwind base + global styles
-        ├── api/
-        │   └── client.js             # fetch wrapper (attaches JWT, base URL)
-        ├── context/
-        │   └── AuthContext.jsx       # Auth state (token, user, loading)
-        ├── components/               # Reusable UI components
-        │   ├── Navbar.jsx            # Top navigation
-        │   ├── ProtectedRoute.jsx    # Guards authenticated routes
-        │   ├── CreateLinkForm.jsx    # New-link form (alias, expiry)
-        │   └── LinkCard.jsx          # Link row (copy, QR, analytics, delete)
-        └── pages/                    # Route-level pages
-            ├── Login.jsx             # Login page
-            ├── Register.jsx          # Registration page
-            ├── Dashboard.jsx         # Create & manage links
-            └── Analytics.jsx         # Per-link analytics view
+    ├── lib/
+    │   ├── api.js                    # fetch wrapper (attaches JWT, base URL)
+    │   └── auth-context.jsx          # Auth state (token, user, loading)
+    ├── components/                   # Reusable UI components
+    │   ├── Logo.jsx                  # Brand mark
+    │   ├── AuthShell.jsx             # Split-layout wrapper for auth pages
+    │   ├── Alert.jsx                 # Inline alert/notice
+    │   ├── CreateLinkForm.jsx        # New-link form (alias, expiry)
+    │   ├── LinkRow.jsx               # Link row (copy, analytics, delete)
+    │   └── AnalyticsModal.jsx        # Per-link analytics + QR modal
+    └── app/                          # App Router pages
+        ├── layout.jsx               # Root layout (fonts, AuthProvider)
+        ├── globals.css              # Tailwind base + component classes
+        ├── page.jsx                 # Marketing landing page
+        ├── login/page.jsx           # Login
+        ├── signup/page.jsx          # Signup
+        ├── verify/page.jsx          # OTP verification
+        ├── forgot-password/page.jsx # Request password reset
+        ├── reset-password/page.jsx  # Set new password via token
+        └── dashboard/              # Protected dashboard
+            ├── layout.jsx          # Sidebar + auth guard
+            └── page.jsx            # Stats, create & manage links
 ```
 
 ---
@@ -313,8 +314,12 @@ LinkForge/
 
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| POST | `/api/auth/register` | Create an account, returns a JWT | Public |
-| POST | `/api/auth/login` | Log in, returns a JWT | Public |
+| POST | `/api/auth/register` | Create an account, emails a 6-digit OTP | Public |
+| POST | `/api/auth/verify-otp` | Verify the OTP, returns a JWT | Public |
+| POST | `/api/auth/resend-otp` | Resend a verification code | Public |
+| POST | `/api/auth/login` | Log in, returns a JWT (verified accounts only) | Public |
+| POST | `/api/auth/forgot-password` | Email a password-reset link | Public |
+| POST | `/api/auth/reset-password` | Set a new password using a token | Public |
 | GET | `/api/auth/me` | Get the current authenticated user | Required |
 | POST | `/api/links` | Create a short link | Required |
 | GET | `/api/links` | List your links (with click counts) | Required |
@@ -387,4 +392,4 @@ This project is open-source and available under the [MIT License](LICENSE).
 
 ---
 
-<p align="center">Built with the PERN stack — PostgreSQL · Express · React · Node.js</p>
+<p align="center">Built with PostgreSQL · Express · Next.js / React · Node.js · Redis</p>
