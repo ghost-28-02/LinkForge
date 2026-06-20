@@ -1,83 +1,328 @@
-# LinkForge
+# LinkForge — Full-Stack URL Shortener & Analytics Platform
 
-A production-style URL shortening service demonstrating full-stack engineering across authentication, data modeling, caching, and analytics.
+![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-4.19-000000?logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pg_8.12-4169E1?logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-4.7-DC382D?logo=redis&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-A React + Tailwind frontend gives each user a personal dashboard to create and manage links. A Node/Express API handles JWT auth (bcrypt-hashed passwords), Base62 short-code generation, optional custom aliases, and link expiry. When someone visits a short link, the server checks Redis for the cached destination and only falls back to PostgreSQL on a cache miss — keeping redirects fast while logging each click (timestamp, referrer, browser, OS, device) for analytics. Rate limiting protects the shorten and auth endpoints from abuse.
+LinkForge is a production-style, full-stack **URL shortening and analytics platform**. Each user gets a personal dashboard to create, manage, and track short links. The **Node/Express** API handles JWT authentication, Base62 short-code generation, custom aliases, and link expiry, while a **Redis read-through cache** keeps redirects fast and **PostgreSQL** serves as the source of truth. Every click is logged with referrer, browser, OS, and device for a rich analytics view, and any link can produce an on-demand QR code.
 
-## Tech stack
+---
 
-React (Vite) + Tailwind CSS · Node.js + Express · PostgreSQL · Redis · JWT auth · QR code generation
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Screenshots](#screenshots)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Install Dependencies](#2-install-dependencies)
+  - [3. Configure Environment Variables](#3-configure-environment-variables)
+  - [4. Run the Application](#4-run-the-application)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
+- [How Redirects Stay Fast](#how-redirects-stay-fast)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Features
 
-- User accounts (register / login) with JWT + bcrypt
-- Create short links with optional custom aliases and expiry dates
-- Redis read-through cache for fast redirects, PostgreSQL as source of truth
-- Per-click logging: timestamp, referrer, browser, OS, device
-- Analytics dashboard with device / browser / OS breakdown and a click timeline
-- On-demand QR code generation for any link
-- Rate limiting on the shorten and auth endpoints
+### Link Management
+- Create short links with auto-generated **7-character Base62** codes
+- Optional **custom aliases** (3–32 alphanumeric characters, uniqueness-checked)
+- Set an **expiry date** so links stop resolving after a chosen time
+- List all of your links with live **click counts**
+- Delete links (cache entry is invalidated automatically)
 
-## Project structure
+### Redirects & Caching
+- Public redirect endpoint resolves `/:code` to the destination
+- **Redis read-through cache** for fast lookups, PostgreSQL as source of truth
+- Cached destinations carry a configurable TTL (`CACHE_TTL_SECONDS`, default 1h)
+- Click logging runs asynchronously so it never delays the redirect
+
+### Analytics
+- Per-click logging: timestamp, referrer, browser, OS, device
+- Per-link analytics with totals and breakdowns by **browser / OS / device**
+- Daily **click timeline** and a recent-clicks feed (latest 25)
+- User-agent parsing via **ua-parser-js**
+
+### Authentication & Security
+- Account **register / login** with JWT-based stateless auth
+- Passwords hashed with **bcrypt**
+- Protected routes guarded by auth middleware (links are scoped per user)
+- **Rate limiting** on auth (10 / 15 min) and shorten (30 / min) endpoints
+- Request validation with **Zod**
+
+### Extras
+- On-demand **QR code** generation (returned as a data URL) for any link
+
+---
+
+## Tech Stack
+
+### Frontend (`frontend/` — Next.js, current)
+| Technology | Version | Purpose |
+|---|---|---|
+| Next.js | 14.2.5 | App Router framework & SSR |
+| React | 18.3.1 | UI framework |
+| Tailwind CSS | 3.4.7 | Utility-first styling |
+| PostCSS | 8.4.40 | CSS processing |
+| Autoprefixer | 10.4.19 | Vendor prefixing |
+
+The modern frontend lives in `frontend/` and includes a marketing landing page,
+login, signup with **6-digit OTP email verification**, **password reset via
+emailed token**, and a professional dashboard (stats, link management, QR
+codes, and per-link analytics). The original Vite client remains in `client/`
+as a reference.
+
+### Legacy Frontend (`client/` — Vite, reference)
+| Technology | Version | Purpose |
+|---|---|---|
+| React | 18.3.1 | UI framework |
+| React Router DOM | 6.26.0 | Client-side routing |
+| Vite | 5.4.0 | Build tool & dev server |
+| Tailwind CSS | 3.4.7 | Utility-first styling |
+
+### Backend
+| Technology | Version | Purpose |
+|---|---|---|
+| Node.js | 18+ | JavaScript runtime (ESM) |
+| Express | 4.19.2 | Web framework |
+| PostgreSQL (pg) | 8.12.0 | Database & connection pool |
+| Redis | 4.7.0 | Read-through cache for redirects |
+| JSON Web Token | 9.0.2 | Authentication tokens |
+| bcryptjs | 2.4.3 | Password hashing |
+| Zod | 3.23.8 | Request schema validation |
+| QRCode | 1.5.4 | QR code generation |
+| ua-parser-js | 1.0.38 | User-agent parsing for analytics |
+| express-rate-limit | 7.4.0 | Endpoint rate limiting |
+| CORS | 2.8.5 | Cross-origin resource sharing |
+| Dotenv | 16.4.5 | Environment variable management |
+
+---
+
+## Screenshots
+
+### Login / Register
+![Authentication](screenshots/auth.png)
+
+### Dashboard — Create & Manage Links
+![Dashboard](screenshots/dashboard.png)
+
+### Link Analytics
+![Analytics](screenshots/analytics.png)
+
+### QR Code
+![QR Code](screenshots/qr.png)
+
+> Add your own images under a `screenshots/` directory to populate this section.
+
+---
+
+## Prerequisites
+
+Make sure the following are installed and running before proceeding:
+
+- [Node.js](https://nodejs.org/) (v18 or later — uses native ESM and `node --watch`)
+- [npm](https://www.npmjs.com/) (v9 or later)
+- [PostgreSQL](https://www.postgresql.org/) — local instance or hosted cluster
+- [Redis](https://redis.io/) — local instance or hosted (e.g. Upstash, Redis Cloud)
+
+---
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/<your-username>/LinkForge.git
+cd LinkForge
+```
+
+### 2. Install Dependencies
+
+Install packages for the backend and frontend separately:
+
+```bash
+# Backend dependencies
+cd backend
+npm install
+cd ..
+
+# Frontend dependencies
+cd client
+npm install
+cd ..
+```
+
+### 3. Configure Environment Variables
+
+**Backend** — create `backend/.env` (copy from `backend/.env.example`):
+
+```env
+# ── Server ────────────────────────────────────────────────
+NODE_ENV=development
+PORT=4000
+BASE_URL=http://localhost:4000
+CORS_ORIGIN=http://localhost:3000
+APP_URL=http://localhost:3000        # frontend URL used in email links
+
+# ── PostgreSQL ────────────────────────────────────────────
+DATABASE_URL=postgres://linkforge:linkforge@localhost:5432/linkforge
+
+# ── Redis ─────────────────────────────────────────────────
+REDIS_URL=redis://localhost:6379
+CACHE_TTL_SECONDS=3600
+
+# ── Auth ──────────────────────────────────────────────────
+JWT_SECRET=replace_with_a_strong_random_secret
+JWT_EXPIRES_IN=7d
+
+# ── Email (Brevo) ─────────────────────────────────────────
+# Get an API key at https://app.brevo.com (SMTP & API → API Keys).
+# If left blank, OTP/reset emails are printed to the server console.
+BREVO_API_KEY=
+BREVO_SENDER_EMAIL=no-reply@linkforge.app
+BREVO_SENDER_NAME=LinkForge
+OTP_TTL_MINUTES=10
+RESET_TTL_MINUTES=30
+```
+
+**Frontend** — create `frontend/.env.local` (copy from `frontend/.env.example`):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+> **Tip:** Generate a strong `JWT_SECRET` before deploying — never reuse the example value.
+
+### 4. Run the Application
+
+First apply the database schema:
+
+```bash
+cd backend
+npm run migrate          # creates users, links, and clicks tables
+```
+
+Then start each service in its own terminal:
+
+```bash
+# Backend → http://localhost:4000
+cd backend
+npm run dev              # node --watch src/index.js
+
+# Frontend → http://localhost:3000
+cd frontend
+npm install
+npm run dev              # next dev
+```
+
+- **Next.js frontend** → [http://localhost:3000](http://localhost:3000)
+- **Express API** → [http://localhost:4000](http://localhost:4000)
+- **Short links resolve at** `http://localhost:4000/<code>`
+
+For production, build the frontend with `npm run build` and serve with `npm start` (from `frontend/`); run the backend with `npm start` (from `backend/`).
+
+### Authentication & Email
+
+Signup now requires email verification:
+
+1. **Sign up** → the API creates an unverified account and emails a 6-digit code.
+2. **Verify** → enter the code at `/verify` to activate the account and sign in.
+3. **Forgot password** → request a reset; a tokenized link (`/reset-password?token=…`) is emailed.
+
+Emails are sent through **Brevo** (`backend/src/utils/email.js`). Set `BREVO_API_KEY`
+to send real mail; without it, every email is logged to the server console so the
+flows remain fully testable offline. New tables `email_verifications` and
+`password_resets` are created automatically on boot (or via `npm run migrate`).
+
+---
+
+## Project Structure
 
 ```
 LinkForge/
-├── server/                 # Node.js + Express API
+├── README.md                         # Project overview, setup instructions
+├── .gitignore                        # Ignore rules (node_modules, .env, etc.)
+├── backend/                           # Node.js + Express API
+│   ├── package.json                  # Backend dependencies & scripts
+│   ├── .env.example                  # Example backend environment variables
 │   └── src/
-│       ├── config/         # env, db (pg pool), redis client
-│       ├── db/             # schema.sql + migration runner
-│       ├── middleware/     # auth, rate limiting, error handling
-│       ├── controllers/    # auth, links, redirect, analytics
-│       ├── routes/         # /api/auth, /api/links
-│       └── utils/          # base62, user-agent parsing
-└── client/                 # React (Vite) + Tailwind dashboard
+│       ├── index.js                  # Server entry point (boots HTTP server)
+│       ├── app.js                    # Express app factory (routes, middleware)
+│       ├── config/                   # Configuration & external clients
+│       │   ├── env.js                # Loads & validates environment variables
+│       │   ├── db.js                 # PostgreSQL pool + query helper
+│       │   └── redis.js              # Redis client
+│       ├── db/                       # Database schema & migrations
+│       │   ├── schema.sql            # users / links / clicks tables + indexes
+│       │   └── migrate.js            # Applies schema.sql
+│       ├── middleware/               # Express middleware
+│       │   ├── auth.js               # JWT verification (authenticate)
+│       │   ├── rateLimit.js          # auth & shorten rate limiters
+│       │   └── errorHandler.js       # notFound + central error handler
+│       ├── controllers/              # Request handlers (business logic)
+│       │   ├── authController.js     # register / login / me
+│       │   ├── linkController.js     # create / list / delete / QR code
+│       │   ├── redirectController.js # public /:code redirect + click logging
+│       │   └── analyticsController.js# per-link analytics aggregation
+│       ├── routes/                   # Express routers
+│       │   ├── auth.js               # /api/auth endpoints
+│       │   └── links.js              # /api/links endpoints
+│       └── utils/                    # Shared helpers
+│           ├── base62.js             # Base62 encode / random code / alias validation
+│           └── userAgent.js          # Parse browser / OS / device from UA
+└── client/                           # React (Vite) + Tailwind dashboard
+    ├── package.json                  # Frontend dependencies & scripts
+    ├── vite.config.js                # Vite configuration
+    ├── tailwind.config.js            # Tailwind CSS configuration
+    ├── postcss.config.js             # PostCSS configuration
+    ├── index.html                    # Root HTML template
+    ├── .env.example                  # Example frontend environment variables
     └── src/
-        ├── api/            # fetch wrapper
-        ├── context/        # AuthContext
-        ├── components/     # Navbar, LinkCard, CreateLinkForm, ...
-        └── pages/          # Login, Register, Dashboard, Analytics
+        ├── main.jsx                  # React entry point (renders <App />)
+        ├── App.jsx                   # Routes & layout
+        ├── index.css                 # Tailwind base + global styles
+        ├── api/
+        │   └── client.js             # fetch wrapper (attaches JWT, base URL)
+        ├── context/
+        │   └── AuthContext.jsx       # Auth state (token, user, loading)
+        ├── components/               # Reusable UI components
+        │   ├── Navbar.jsx            # Top navigation
+        │   ├── ProtectedRoute.jsx    # Guards authenticated routes
+        │   ├── CreateLinkForm.jsx    # New-link form (alias, expiry)
+        │   └── LinkCard.jsx          # Link row (copy, QR, analytics, delete)
+        └── pages/                    # Route-level pages
+            ├── Login.jsx             # Login page
+            ├── Register.jsx          # Registration page
+            ├── Dashboard.jsx         # Create & manage links
+            └── Analytics.jsx         # Per-link analytics view
 ```
 
-## Getting started
+---
 
-You need PostgreSQL and Redis running locally. Then start the backend and frontend in separate terminals.
+## API Reference
 
-- Frontend: http://localhost:5173
-- API: http://localhost:4000
-- Short links resolve at `http://localhost:4000/<code>`
-
-**Backend**
-
-```bash
-cd server
-cp .env.example .env          # point DATABASE_URL / REDIS_URL at your services
-npm install
-npm run migrate               # apply the schema
-npm run dev                   # starts on :4000
-```
-
-**Frontend**
-
-```bash
-cd client
-cp .env.example .env          # VITE_API_URL=http://localhost:4000
-npm install
-npm run dev                   # starts on :5173
-```
-
-## API reference
-
-| Method | Endpoint                     | Auth | Description                          |
-| ------ | ---------------------------- | ---- | ------------------------------------ |
-| POST   | `/api/auth/register`         | —    | Create an account, returns a token   |
-| POST   | `/api/auth/login`            | —    | Log in, returns a token              |
-| GET    | `/api/auth/me`               | ✓    | Current user                         |
-| POST   | `/api/links`                 | ✓    | Create a short link                  |
-| GET    | `/api/links`                 | ✓    | List your links (with click counts)  |
-| GET    | `/api/links/:id/qr`          | ✓    | QR code (data URL) for a link        |
-| GET    | `/api/links/:id/analytics`   | ✓    | Detailed analytics for a link        |
-| DELETE | `/api/links/:id`             | ✓    | Delete a link                        |
-| GET    | `/:code`                     | —    | Redirect to the destination          |
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/api/auth/register` | Create an account, returns a JWT | Public |
+| POST | `/api/auth/login` | Log in, returns a JWT | Public |
+| GET | `/api/auth/me` | Get the current authenticated user | Required |
+| POST | `/api/links` | Create a short link | Required |
+| GET | `/api/links` | List your links (with click counts) | Required |
+| GET | `/api/links/:id/qr` | Get a QR code (data URL) for a link | Required |
+| GET | `/api/links/:id/analytics` | Detailed analytics for a link | Required |
+| DELETE | `/api/links/:id` | Delete a link | Required |
+| GET | `/:code` | Redirect to the destination URL | Public |
+| GET | `/health` | Health check (`{ status: "ok" }`) | Public |
 
 ### Create a link
 
@@ -88,13 +333,58 @@ curl -X POST http://localhost:4000/api/links \
   -d '{"destination":"https://example.com","alias":"promo","expiresAt":null}'
 ```
 
-## How redirects stay fast
+**Request body**
 
-1. `GET /:code` first reads `link:<code>` from Redis.
-2. On a hit, it redirects immediately using the cached destination.
-3. On a miss, it queries PostgreSQL, checks expiry, then writes the result back to Redis with a TTL (`CACHE_TTL_SECONDS`, default 1h).
-4. Click logging runs asynchronously so it never delays the redirect.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `destination` | string (URL) | Yes | Max 2048 chars |
+| `alias` | string | No | 3–32 alphanumeric chars; must be unique |
+| `expiresAt` | ISO datetime / null | No | Link stops resolving after this time |
 
-## Environment variables
+**Response (`201`)**
 
-See `.env.example` (root) and `server/.env.example` / `client/.env.example`. Set a strong `JWT_SECRET` before deploying.
+```json
+{
+  "id": 1,
+  "shortCode": "promo",
+  "shortUrl": "http://localhost:4000/promo",
+  "destination": "https://example.com",
+  "isCustom": true,
+  "expiresAt": null,
+  "createdAt": "2026-06-18T10:00:00.000Z",
+  "clickCount": 0
+}
+```
+
+---
+
+## How Redirects Stay Fast
+
+1. `GET /:code` first reads `link:<code>` from **Redis**.
+2. On a **cache hit**, it redirects immediately using the cached destination.
+3. On a **cache miss**, it queries **PostgreSQL**, checks expiry, then writes the result back to Redis with a TTL (`CACHE_TTL_SECONDS`, default 1h).
+4. **Click logging runs asynchronously**, so capturing referrer/browser/OS/device never delays the redirect itself.
+
+---
+
+## Contributing
+
+Contributions are welcome! Follow these steps:
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/your-feature-name`
+3. **Commit** your changes: `git commit -m "feat: add your feature"`
+4. **Push** to your branch: `git push origin feature/your-feature-name`
+5. **Open a Pull Request** targeting the `main` branch
+
+Please follow the existing code style and include clear commit messages.
+
+---
+
+## License
+
+This project is open-source and available under the [MIT License](LICENSE).
+
+---
+
+<p align="center">Built with the PERN stack — PostgreSQL · Express · React · Node.js</p>
