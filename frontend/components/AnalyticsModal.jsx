@@ -138,14 +138,12 @@ export default function AnalyticsModal({ link, onClose }) {
                     {data.timeline.map((d) => (
                       <div
                         key={d.day}
-                        className="group relative flex-1"
-                        title={`${d.day}: ${d.count}`}
-                      >
-                        <div
-                          className="rounded-t bg-gradient-to-t from-brand-300 to-brand-500"
-                          style={{ height: `${(d.count / maxDay) * 100}%` }}
-                        />
-                      </div>
+                        className="min-w-[6px] flex-1 rounded-t bg-gradient-to-t from-brand-300 to-brand-500"
+                        style={{
+                          height: `${Math.max((d.count / maxDay) * 100, 4)}%`,
+                        }}
+                        title={`${d.day}: ${d.count} click${d.count === 1 ? '' : 's'}`}
+                      />
                     ))}
                   </div>
                 )}

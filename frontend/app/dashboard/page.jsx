@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import CreateLinkForm from '@/components/CreateLinkForm';
 import LinkRow from '@/components/LinkRow';
-import AnalyticsModal from '@/components/AnalyticsModal';
+import QrModal from '@/components/QrModal';
 import { api } from '@/lib/api';
 
 function StatCard({ label, value, icon }) {
@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [active, setActive] = useState(null);
+  const [qrLink, setQrLink] = useState(null);
 
   useEffect(() => {
     api
@@ -45,17 +45,6 @@ export default function DashboardPage() {
 
   function handleCreated(link) {
     setLinks((prev) => [link, ...prev]);
-  }
-
-  async function handleDelete(link) {
-    if (!window.confirm(`Delete ${link.shortUrl}? This cannot be undone.`))
-      return;
-    try {
-      await api.deleteLink(link.id);
-      setLinks((prev) => prev.filter((l) => l.id !== link.id));
-    } catch (err) {
-      setError(err.message);
-    }
   }
 
   return (
@@ -101,9 +90,9 @@ export default function DashboardPage() {
       <CreateLinkForm onCreated={handleCreated} />
 
       {/* Links */}
-      <div className="space-y-3">
+      <div>
         {error && (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -124,20 +113,30 @@ export default function DashboardPage() {
             </p>
           </div>
         ) : (
-          links.map((link) => (
-            <LinkRow
-              key={link.id}
-              link={link}
-              onDelete={handleDelete}
-              onAnalytics={setActive}
-            />
-          ))
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[780px] text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3">Short Link</th>
+                    <th className="px-5 py-3">Original Link</th>
+                    <th className="px-5 py-3 text-center">QR Code</th>
+                    <th className="px-5 py-3 text-center">Clicks</th>
+                    <th className="px-5 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {links.map((link) => (
+                    <LinkRow key={link.id} link={link} onShowQr={setQrLink} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
 
-      {active && (
-        <AnalyticsModal link={active} onClose={() => setActive(null)} />
-      )}
+      {qrLink && <QrModal link={qrLink} onClose={() => setQrLink(null)} />}
     </div>
   );
 }

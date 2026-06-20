@@ -14,6 +14,11 @@ const nav = [
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     ),
   },
+  {
+    href: '/dashboard/analytics',
+    label: 'Analytics',
+    icon: <path d="M3 3v18h18M7 16l4-6 4 3 5-7" />,
+  },
 ];
 
 export default function DashboardLayout({ children }) {
@@ -51,7 +56,10 @@ export default function DashboardLayout({ children }) {
         </div>
         <nav className="mt-8 flex-1 space-y-1">
           {nav.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              item.href === '/dashboard'
+                ? pathname === '/dashboard'
+                : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}

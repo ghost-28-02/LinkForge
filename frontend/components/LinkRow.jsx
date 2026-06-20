@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 
-function formatDate(value) {
-  if (!value) return null;
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+function hostOf(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
 }
 
-export default function LinkRow({ link, onDelete, onAnalytics }) {
+export default function LinkRow({ link, onShowQr }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -25,66 +24,120 @@ export default function LinkRow({ link, onDelete, onAnalytics }) {
   }
 
   const expired = link.expiresAt && new Date(link.expiresAt) < new Date();
+  const host = hostOf(link.destination);
+  const favicon = host
+    ? `https://www.google.com/s2/favicons?domain=${host}&sz=64`
+    : null;
 
   return (
-    <div className="card flex flex-col gap-4 p-5 transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
+    <tr className="transition hover:bg-slate-50">
+      {/* Short Link */}
+      <td className="px-5 py-4">
         <div className="flex items-center gap-2">
           <a
             href={link.shortUrl}
             target="_blank"
             rel="noreferrer"
-            className="truncate font-semibold text-brand-600 hover:underline"
+            className="max-w-[180px] truncate font-medium text-brand-600 hover:underline"
           >
             {link.shortUrl.replace(/^https?:\/\//, '')}
           </a>
-          {link.isCustom && (
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
-              custom
-            </span>
-          )}
-          {expired && (
-            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
-              expired
-            </span>
-          )}
+          <button
+            onClick={copy}
+            className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:text-slate-700"
+            aria-label="Copy short link"
+            title={copied ? 'Copied!' : 'Copy'}
+          >
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
         </div>
-        <p className="mt-1 truncate text-sm text-slate-500">
-          {link.destination}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">
-          Created {formatDate(link.createdAt)}
-          {link.expiresAt && ` · Expires ${formatDate(link.expiresAt)}`}
-        </p>
-      </div>
+      </td>
 
-      <div className="flex items-center gap-2">
-        <div className="mr-2 text-right">
-          <p className="text-xl font-bold text-slate-900">{link.clickCount}</p>
-          <p className="text-xs text-slate-400">clicks</p>
+      {/* Original Link */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          {favicon ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={favicon}
+              alt=""
+              className="h-5 w-5 flex-shrink-0 rounded"
+            />
+          ) : (
+            <span className="h-5 w-5 flex-shrink-0 rounded bg-slate-100" />
+          )}
+          <a
+            href={link.destination}
+            target="_blank"
+            rel="noreferrer"
+            className="max-w-[320px] truncate text-slate-600 hover:underline"
+            title={link.destination}
+          >
+            {link.destination}
+          </a>
         </div>
+      </td>
+
+      {/* QR Code */}
+      <td className="px-5 py-4 text-center">
         <button
-          onClick={copy}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          onClick={() => onShowQr(link)}
+          className="inline-grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600"
+          aria-label="Show QR code"
+          title="Show QR code"
         >
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
-        <button
-          onClick={() => onAnalytics(link)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          Analytics
-        </button>
-        <button
-          onClick={() => onDelete(link)}
-          className="rounded-lg border border-slate-200 px-2 py-1.5 text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-          aria-label="Delete link"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <path d="M14 14h3v3M21 21v.01M17 21h.01M21 17h.01" />
           </svg>
         </button>
-      </div>
-    </div>
+      </td>
+
+      {/* Clicks */}
+      <td className="px-5 py-4 text-center font-semibold text-slate-800">
+        {link.clickCount}
+      </td>
+
+      {/* Status */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 text-sm font-medium ${
+              expired ? 'text-slate-400' : 'text-green-600'
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                expired ? 'bg-slate-300' : 'bg-green-500'
+              }`}
+            />
+            {expired ? 'Expired' : 'Active'}
+          </span>
+          <a
+            href={link.shortUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="grid h-7 w-7 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+            aria-label="Visit link"
+            title="Visit link"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </a>
+        </div>
+      </td>
+    </tr>
   );
 }
